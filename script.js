@@ -321,7 +321,7 @@ function buildScreen(state) {
         </div>
         <div class="auto-spin-btns">
           <div class="auto-spin-wrap">
-            <button class="btn-auto" onclick="autoSpin(${tenThousandYenSpins()})">1万円分回す</button>
+            <button class="btn-auto" onclick="autoSpin(${tenThousandYenSpins()})">1万円分</button>
             <p class="spin-cost-hint">約${tenThousandYenSpins()}回転分</p>
           </div>
         </div>
