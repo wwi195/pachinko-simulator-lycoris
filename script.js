@@ -14,6 +14,7 @@ const game = {
   totalLtHits: 0,
   ltAllStats: { ltTotalSpins: 0 },
   lt: null,
+  ltCycleSpins: 0,
   pending: {},
   eigyoAlertShown: false,
   log: [],
@@ -70,12 +71,13 @@ function runNormalSpin() {
   if (result === 'hit') {
     const typeKey = rollBonusType();
     const info = BONUS_TYPES[typeKey];
+    const interval = game.totalSpins - game.lastHitSpins;
     game.bonusCounts[typeKey]++;
     addBalls(info.actual);
     game.currentSpins = 0;
     game.lastHitSpins = game.totalSpins;
-    game.pending = { typeKey, entersLt: info.entersLt };
-    addLog(`大当たり！ ${typeKey} ＋${info.actual}球`, 'win');
+    game.pending = { typeKey, entersLt: info.entersLt, interval };
+    addLog(`${interval}回転で大当たり！ ${typeKey} ＋${info.actual}球`, 'win');
     setState('bonus_result');
     return true;
   }
@@ -103,6 +105,7 @@ function handleBonusContinue() {
     game.lt = createLtState(entry.mode);
     game.mode = 'rush';
     game.ltEntryCount++;
+    game.ltCycleSpins = 0;
     game.pending = { cutinColor: entry.color };
     addLog('LT突入！', 'rush');
     setState('lt_cutin');
@@ -125,6 +128,7 @@ function backToNormal() {
 // 1回転処理。画面遷移が起きたら true を返す
 function runLtSpin(opts = {}) {
   game.ltAllStats.ltTotalSpins++;
+  game.ltCycleSpins++;
   const { ltState, outcome, hitActual, hitNominal, addOnCount, nextModeColor } = applyLtSpin(game.lt);
   game.lt = ltState;
 
@@ -145,8 +149,9 @@ function runLtSpin(opts = {}) {
 
   game.totalLtHits++;
   addBalls(hitActual);
-  game.pending = { hitActual, hitNominal, addOnCount, cutinColor: nextModeColor };
-  addLog(`当選！ ＋${hitActual}球 (上乗せ${addOnCount}連)`, 'rush');
+  game.pending = { hitActual, hitNominal, addOnCount, cutinColor: nextModeColor, spinsThisCycle: game.ltCycleSpins };
+  game.ltCycleSpins = 0;
+  addLog(`${game.pending.spinsThisCycle}回転で当選！ ＋${hitActual}球 (上乗せ${addOnCount}連)`, 'rush');
   setState('lt_hit_result');
   return true;
 }
@@ -184,6 +189,7 @@ function handleLtResultEnd() {
   addLog('LT終了 → 通常時へ');
   game.mode = 'normal';
   game.lt = null;
+  game.ltCycleSpins = 0;
   setState('normal_idle');
 }
 
@@ -215,6 +221,7 @@ function resetGame() {
   game.totalLtHits     = 0;
   game.ltAllStats      = { ltTotalSpins: 0 };
   game.lt              = null;
+  game.ltCycleSpins    = 0;
   game.pending         = {};
   game.eigyoAlertShown = false;
   game.log             = [];
@@ -325,6 +332,7 @@ function buildScreen(state) {
       const info = BONUS_TYPES[game.pending.typeKey];
       const label = BONUS_LABELS[game.pending.typeKey];
       return `<div class="screen">
+        <p class="result-sub">${game.pending.interval}回転で大当たり</p>
         <div class="vibun-box ${info.entersLt ? 'rush-box' : ''}">
           <p class="bonus-main ${info.entersLt ? 'premium' : 'standard'}">${label}</p>
           <p class="bonus-sub">${info.nominal}個（＋${info.actual}球獲得）</p>
@@ -363,8 +371,9 @@ function buildScreen(state) {
     }
 
     case 'lt_hit_result': {
-      const { hitActual, hitNominal, addOnCount } = game.pending;
+      const { hitActual, hitNominal, addOnCount, spinsThisCycle } = game.pending;
       return `<div class="screen">
+        <p class="result-sub">${spinsThisCycle}回転で当選</p>
         <div class="vibun-box rush-box">
           <p class="bonus-main premium">${hitNominal}個</p>
           <p class="bonus-sub">＋${hitActual}球獲得${addOnCount > 0 ? `（上乗せ${addOnCount}連含む）` : ''}</p>
