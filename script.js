@@ -359,6 +359,7 @@ function buildScreen(state) {
     case 'lt_idle': {
       const skipDisabled = game.lt.stRemaining <= 10;
       return `<div class="screen">
+        <p class="chain-label">${game.lt.totalHits}連チャン中</p>
         <p class="rush-sub">ST残り <span>${game.lt.stRemaining}</span> 回</p>
         <div class="rush-spin-btns">
           <button class="btn-rush-spin" onclick="handleLtSpin()">1回転</button>
@@ -374,6 +375,7 @@ function buildScreen(state) {
       const { hitActual, hitNominal, addOnCount, spinsThisCycle } = game.pending;
       return `<div class="screen">
         <p class="result-sub">${spinsThisCycle}回転で当選</p>
+        <p class="chain-label">${game.lt.totalHits}連チャン中</p>
         <div class="vibun-box rush-box">
           <p class="bonus-main premium">${hitNominal}個</p>
           <p class="bonus-sub">＋${hitActual}球獲得${addOnCount > 0 ? `（上乗せ${addOnCount}連含む）` : ''}</p>
