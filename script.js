@@ -15,6 +15,10 @@ const game = {
   ltAllStats: { ltTotalSpins: 0 },
   lt: null,
   ltCycleSpins: 0,
+  ltBonus750Count: 0,
+  ltBonus3000Count: 0,
+  ltUltimateDriveEntryCount: 0,
+  ltUltimateDriveNominalBalls: 0,
   pending: {},
   eigyoAlertShown: false,
   log: [],
@@ -106,6 +110,10 @@ function handleBonusContinue() {
     game.mode = 'rush';
     game.ltEntryCount++;
     game.ltCycleSpins = 0;
+    game.ltBonus750Count = 0;
+    game.ltBonus3000Count = 0;
+    game.ltUltimateDriveEntryCount = 0;
+    game.ltUltimateDriveNominalBalls = 0;
     game.pending = { cutinColor: entry.color };
     addLog('LT突入！', 'rush');
     setState('lt_cutin');
@@ -153,6 +161,7 @@ function runLtSpin(opts = {}) {
   game.ltCycleSpins = 0;
 
   if (outcome === 'hit_mode_a') {
+    game.ltBonus750Count++;
     game.pending = { hitActual, hitNominal, cutinColor: nextModeColor, spinsThisCycle };
     addLog(`${spinsThisCycle}回転で当選！ ＋${hitActual}球`, 'rush');
     setState('lt_hit_result');
@@ -161,15 +170,19 @@ function runLtSpin(opts = {}) {
 
   // outcome === 'hit_mode_b_base' — show the base win first; the add-on
   // chain (if any) is rolled one step at a time from handleLtAddonRoll(),
-  // each success getting its own "上乗せ3000発！" screen.
+  // each success escalating the displayed cumulative bonus (3000→6000→9000…)
+  // and branding itself as "ULTIMATE DRIVE".
+  game.ltBonus3000Count++;
   game.pending = { hitActual, hitNominal, spinsThisCycle, addOnCount: 0 };
-  addLog(`${spinsThisCycle}回転で当選！ 3000ボーナス獲得 ＋${hitActual}球`, 'rush');
+  addLog(`${spinsThisCycle}回転で当選！ ボーナス3000 ＋${hitActual}球`, 'rush');
   setState('lt_hit_base_b');
   return true;
 }
 
-// モードBの上乗せ抽選を1回分だけ進める。「3000ボーナス獲得！」画面と
-// 「上乗せ3000発！」画面、どちらの ▶次へ ボタンからも呼ばれる。
+// モードBの上乗せ抽選を1回分だけ進める。「ボーナス3000」画面と
+// 「ボーナスX000！ULTIMATE DRIVE」画面、どちらのボタンからも呼ばれる。
+// 実際の獲得球数は毎回+2800球(グール版と同じ)だが、表示上のボーナス数は
+// 3000→6000→9000…と累計で増えていく。
 function handleLtAddonRoll() {
   const { ltState, outcome, hitActual, hitNominal, nextModeColor } = applyAddOnStep(game.lt);
   game.lt = ltState;
@@ -177,9 +190,13 @@ function handleLtAddonRoll() {
   if (outcome === 'addon_hit') {
     addBalls(hitActual);
     game.pending.addOnCount++;
+    if (game.pending.addOnCount === 1) {
+      game.ltUltimateDriveEntryCount++;
+    }
+    game.ltUltimateDriveNominalBalls += hitNominal;
     game.pending.hitActual = hitActual;
-    game.pending.hitNominal = hitNominal;
-    addLog(`上乗せ${game.pending.addOnCount}連目！ ＋${hitActual}球`, 'rush');
+    game.pending.cumulativeNominal = 3000 + game.pending.addOnCount * 3000;
+    addLog(`ボーナス${game.pending.cumulativeNominal}！ ULTIMATE DRIVE獲得 ＋${hitActual}球`, 'rush');
     setState('lt_addon_hit');
     return;
   }
@@ -255,6 +272,10 @@ function resetGame() {
   game.ltAllStats      = { ltTotalSpins: 0 };
   game.lt              = null;
   game.ltCycleSpins    = 0;
+  game.ltBonus750Count = 0;
+  game.ltBonus3000Count = 0;
+  game.ltUltimateDriveEntryCount = 0;
+  game.ltUltimateDriveNominalBalls = 0;
   game.pending         = {};
   game.eigyoAlertShown = false;
   game.log             = [];
@@ -423,7 +444,7 @@ function buildScreen(state) {
         <p class="result-sub">${spinsThisCycle}回転で当選</p>
         <p class="chain-label">${game.lt.totalHits}連チャン中</p>
         <div class="vibun-box rush-box">
-          <p class="bonus-main premium">3000ボーナス獲得！</p>
+          <p class="bonus-main premium">ボーナス3000</p>
           <p class="bonus-sub">＋${hitActual}球獲得</p>
         </div>
         <button class="btn-action" onclick="handleLtAddonRoll()" style="margin-top:16px;">▶ 次へ</button>
@@ -431,14 +452,15 @@ function buildScreen(state) {
     }
 
     case 'lt_addon_hit': {
-      const { hitActual, addOnCount } = game.pending;
+      const { hitActual, addOnCount, cumulativeNominal } = game.pending;
       return `<div class="screen">
         <p class="chain-label">上乗せ${addOnCount}連目</p>
         <div class="vibun-box rush-box">
-          <p class="bonus-main premium">上乗せ3000発！</p>
+          <p class="bonus-main premium">ボーナス${cumulativeNominal}！</p>
+          <p class="bonus-sub">ULTIMATE DRIVE獲得</p>
           <p class="bonus-sub">＋${hitActual}球獲得</p>
         </div>
-        <button class="btn-action" onclick="handleLtAddonRoll()" style="margin-top:16px;">▶ 次へ</button>
+        <button class="btn-action" onclick="handleLtAddonRoll()" style="margin-top:16px;">▷ ULTIMATE DRIVE</button>
       </div>`;
     }
 
@@ -455,16 +477,34 @@ function buildScreen(state) {
         <p class="rush-result-title">LT リザルト</p>
         <div class="rush-result-box">
           <div class="result-row highlight">
-            <span class="rr-label">当選回数</span>
+            <span class="rr-label">連チャン数</span>
             <span class="rr-val gold">${s.totalHits}回</span>
+          </div>
+          <div class="result-row">
+            <span class="rr-label">TOTAL</span>
+            <span class="rr-val">${s.nominalBalls.toLocaleString()}個</span>
           </div>
           <div class="result-row">
             <span class="rr-label">獲得出玉</span>
             <span class="rr-val gold">${s.actualBalls.toLocaleString()}球</span>
           </div>
+          <hr class="result-hr">
+          <p class="rr-section">ボーナス内訳</p>
           <div class="result-row">
-            <span class="rr-label">表示出玉</span>
-            <span class="rr-val">${s.nominalBalls.toLocaleString()}個</span>
+            <span class="rr-label">750ボーナス</span>
+            <span class="rr-val">×${game.ltBonus750Count}回</span>
+          </div>
+          <div class="result-row">
+            <span class="rr-label">3000ボーナス</span>
+            <span class="rr-val">×${game.ltBonus3000Count}回</span>
+          </div>
+          <div class="result-row">
+            <span class="rr-label">ULTIMATE DRIVE突入</span>
+            <span class="rr-val">×${game.ltUltimateDriveEntryCount}回</span>
+          </div>
+          <div class="result-row">
+            <span class="rr-label">ULTIMATE DRIVE表示出玉</span>
+            <span class="rr-val">${game.ltUltimateDriveNominalBalls.toLocaleString()}個</span>
           </div>
         </div>
         <button class="btn-action" onclick="handleLtResultEnd()" style="margin-top:16px;">▶ 通常へ戻る</button>
