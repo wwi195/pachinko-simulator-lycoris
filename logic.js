@@ -32,6 +32,57 @@ function rollBonusType() {
   return BONUS_TYPE_ORDER[BONUS_TYPE_ORDER.length - 1];
 }
 
+const LT_ST_COUNT = 132;
+const P_LT_HIT = 1 / 97.1;
+
+function spinLt() {
+  return Math.random() < P_LT_HIT ? 'hit' : 'miss';
+}
+
+function rollInitialMode() {
+  return Math.random() < 0.7 ? 'A' : 'B';
+}
+
+function rollNextMode(currentMode) {
+  if (currentMode === 'A') {
+    return Math.random() < 0.5 ? 'A' : 'B';
+  }
+  return Math.random() < 0.93 ? 'A' : 'B';
+}
+
+function rollAddOnSuccess() {
+  return Math.random() < 0.5;
+}
+
+function resolveModeBAddOns() {
+  let addOnCount = 0;
+  let extraActual = 0;
+  let extraNominal = 0;
+  while (rollAddOnSuccess()) {
+    addOnCount++;
+    extraActual += 2800;
+    extraNominal += 3000;
+  }
+  return { addOnCount, extraActual, extraNominal };
+}
+
+const COLOR_ORDER = ['rainbow', 'red', 'green', 'blue'];
+const COLOR_TABLE = {
+  A: { rainbow: 0,    red: 0.03, green: 0.194, blue: 0.776 },
+  B: { rainbow: 0.15, red: 0.40, green: 0.315, blue: 0.135 },
+};
+
+function rollCutinColor(mode) {
+  const table = COLOR_TABLE[mode];
+  const r = Math.random();
+  let cumulative = 0;
+  for (const color of COLOR_ORDER) {
+    cumulative += table[color];
+    if (r < cumulative) return color;
+  }
+  return COLOR_ORDER[COLOR_ORDER.length - 1];
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     SPIN_RATE_OPTIONS,
@@ -42,5 +93,15 @@ if (typeof module !== 'undefined' && module.exports) {
     BONUS_TYPES,
     BONUS_TYPE_ORDER,
     rollBonusType,
+    LT_ST_COUNT,
+    P_LT_HIT,
+    spinLt,
+    rollInitialMode,
+    rollNextMode,
+    rollAddOnSuccess,
+    resolveModeBAddOns,
+    COLOR_ORDER,
+    COLOR_TABLE,
+    rollCutinColor,
   };
 }
