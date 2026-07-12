@@ -120,6 +120,73 @@ function backToNormal() {
   setState('normal_idle');
 }
 
+// ---- LT(ST)中ハンドラ ----
+
+// 1回転処理。画面遷移が起きたら true を返す
+function runLtSpin(opts = {}) {
+  game.ltAllStats.ltTotalSpins++;
+  const { ltState, outcome, hitActual, hitNominal, addOnCount, nextModeColor } = applyLtSpin(game.lt);
+  game.lt = ltState;
+
+  if (outcome === 'miss') {
+    if (!opts.silent) {
+      addLog(`ST残り${ltState.stRemaining}回`);
+      setState('lt_miss');
+      return true;
+    }
+    return false;
+  }
+
+  if (outcome === 'lt_end') {
+    addLog('ST終了 → LTリザルトへ');
+    setState('lt_result');
+    return true;
+  }
+
+  game.totalLtHits++;
+  addBalls(hitActual);
+  game.pending = { hitActual, hitNominal, addOnCount, nextModeColor };
+  addLog(`当選！ ＋${hitActual}球 (上乗せ${addOnCount}連)`, 'rush');
+  setState('lt_hit_result');
+  return true;
+}
+
+function handleLtSpin() {
+  runLtSpin();
+}
+
+function handleLtSpin10() {
+  for (let i = 0; i < 10; i++) {
+    if (runLtSpin({ silent: true })) return;
+  }
+  setState('lt_idle');
+}
+
+function handleLtSkip() {
+  for (;;) {
+    if (runLtSpin({ silent: true })) return;
+    if (game.lt.stRemaining <= 10) {
+      setState('lt_idle');
+      return;
+    }
+  }
+}
+
+function handleLtHitContinue() {
+  setState('lt_cutin');
+}
+
+function handleLtMissContinue() {
+  setState('lt_idle');
+}
+
+function handleLtResultEnd() {
+  addLog('LT終了 → 通常時へ');
+  game.mode = 'normal';
+  game.lt = null;
+  setState('normal_idle');
+}
+
 // ---- 営業終了・退店 ----
 
 function handleEigyoHai() {
