@@ -1357,7 +1357,7 @@ function runLtSpin(opts = {}) {
 
   game.totalLtHits++;
   addBalls(hitActual);
-  game.pending = { hitActual, hitNominal, addOnCount, nextModeColor };
+  game.pending = { hitActual, hitNominal, addOnCount, cutinColor: nextModeColor };
   addLog(`当選！ ＋${hitActual}球 (上乗せ${addOnCount}連)`, 'rush');
   setState('lt_hit_result');
   return true;
@@ -1408,7 +1408,9 @@ This is Task 8 of a 10-task plan for `pachinko-simulator-lycoris`. Task 7 (game 
 - `runLtSpin` mirrors the exact silent/non-silent pattern already proven correct in `pachinko-simulator-ghoul`'s RUSH handlers: a miss only renders when not silent; a hit or `lt_end` always renders regardless of the silent flag. `handleLtSpin()` (no `opts`) always shows a screen on every outcome including miss — this is deliberate, matching a bugfix already made in the sibling project (a manual single-spin action must always produce visible feedback).
 - After a hit, `handleLtHitContinue()` transitions to `lt_cutin` (not straight back to `lt_idle`) — the spec requires the color-coded "ラッシュ開始！" cutin to appear after **every** hit (including chained mode-B add-ons, which are already fully resolved inside `applyLtSpin` before this handler ever runs), not just the first LT entry.
 - `handleLtSkip()`'s `<= 10` early-stop and the corresponding UI disable (Task 9) mirror an already-approved UX refinement from the sibling ghoul project: skip fast-forwards through misses but always leaves the last 10 ST spins for manual (1回転/10回転) play.
-- `game.pending` here holds `{ hitActual, hitNominal, addOnCount, nextModeColor }` after a hit — note `nextModeColor` is what gets rendered on the following `lt_cutin` screen; the underlying `mode` that produced it is never stored in `pending`, only its already-resolved color.
+- `game.pending` here holds `{ hitActual, hitNominal, addOnCount, cutinColor }` after a hit (the `nextModeColor` returned by `applyLtSpin` is stored under the key `cutinColor` — not `nextModeColor` — so it lines up with what the `lt_cutin` screen in Task 9 actually reads via `game.pending.cutinColor`, the same key the initial-entry path in Task 7 uses). The underlying `mode` that produced it is never stored in `pending`, only its already-resolved color.
+
+> **Post-implementation fix:** the original draft of this task stored the color under `nextModeColor` while Task 9's `lt_cutin` screen reads `game.pending.cutinColor` — a naming mismatch that would have made every *continuing* LT-hit cutin render `undefined` for its color (the *initial* LT-entry cutin was unaffected, since `handleBonusContinue` in Task 7 already used `cutinColor`). Caught during Task 10 manual verification and fixed by renaming the key when it's stored, as shown above.
 
 - [ ] **Step 2: Commit**
 

@@ -145,7 +145,7 @@ function runLtSpin(opts = {}) {
 
   game.totalLtHits++;
   addBalls(hitActual);
-  game.pending = { hitActual, hitNominal, addOnCount, nextModeColor };
+  game.pending = { hitActual, hitNominal, addOnCount, cutinColor: nextModeColor };
   addLog(`当選！ ＋${hitActual}球 (上乗せ${addOnCount}連)`, 'rush');
   setState('lt_hit_result');
   return true;
