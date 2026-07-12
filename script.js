@@ -350,6 +350,11 @@ function tenThousandYenSpins() {
   return game.spinRate * 10;
 }
 
+// LT(ST)の理論継続率：132回転以内に一度でも当選する確率
+function ltContinuationRatePercent() {
+  return (100 * (1 - Math.pow(1 - P_LT_HIT, LT_ST_COUNT))).toFixed(1);
+}
+
 const BONUS_LABELS = {
   premium: 'PREMIUM LYCORECO BONES',
   firstLycoris: 'First Lycoris BONUS',
@@ -406,6 +411,7 @@ function buildScreen(state) {
       return `<div class="screen">
         <p class="cutin-flavor color-${color}">ラッシュ開始！（${CUTIN_COLOR_LABELS[color]}）</p>
         <p class="rush-title" style="color:#c9a227;">SPECIAL LycoReco RUSH<br>HYPER DELUXE</p>
+        <p class="result-sub">継続率 ${ltContinuationRatePercent()}%</p>
         <button class="btn-action" onclick="handleLtCutinContinue()">▶ 次へ</button>
       </div>`;
     }
@@ -482,11 +488,11 @@ function buildScreen(state) {
           </div>
           <div class="result-row">
             <span class="rr-label">TOTAL</span>
-            <span class="rr-val">${s.nominalBalls.toLocaleString()}個</span>
+            <span class="rr-val gold">${s.nominalBalls.toLocaleString()}個</span>
           </div>
           <div class="result-row">
             <span class="rr-label">獲得出玉</span>
-            <span class="rr-val gold">${s.actualBalls.toLocaleString()}球</span>
+            <span class="rr-val">${s.actualBalls.toLocaleString()}球</span>
           </div>
           <hr class="result-hr">
           <p class="rr-section">ボーナス内訳</p>
