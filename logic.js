@@ -83,6 +83,75 @@ function rollCutinColor(mode) {
   return COLOR_ORDER[COLOR_ORDER.length - 1];
 }
 
+function createLtState(initialMode) {
+  return {
+    mode: initialMode,
+    stRemaining: LT_ST_COUNT,
+    totalHits: 0,
+    actualBalls: 0,
+    nominalBalls: 0,
+  };
+}
+
+function applyLtSpin(ltState) {
+  const result = spinLt();
+  const stRemaining = ltState.stRemaining - 1;
+
+  if (result === 'miss') {
+    if (stRemaining <= 0) {
+      return { ltState: { ...ltState, stRemaining: 0 }, outcome: 'lt_end' };
+    }
+    return { ltState: { ...ltState, stRemaining }, outcome: 'miss' };
+  }
+
+  if (ltState.mode === 'A') {
+    const nextMode = rollNextMode('A');
+    const nextModeColor = rollCutinColor(nextMode);
+    const newState = {
+      mode: nextMode,
+      stRemaining: LT_ST_COUNT,
+      totalHits: ltState.totalHits + 1,
+      actualBalls: ltState.actualBalls + 700,
+      nominalBalls: ltState.nominalBalls + 750,
+    };
+    return {
+      ltState: newState,
+      outcome: 'hit_mode_a',
+      hitActual: 700,
+      hitNominal: 750,
+      addOnCount: 0,
+      nextModeColor,
+    };
+  }
+
+  const addOns = resolveModeBAddOns();
+  const hitActual = 2800 + addOns.extraActual;
+  const hitNominal = 3000 + addOns.extraNominal;
+  const nextMode = rollNextMode('B');
+  const nextModeColor = rollCutinColor(nextMode);
+  const newState = {
+    mode: nextMode,
+    stRemaining: LT_ST_COUNT,
+    totalHits: ltState.totalHits + 1,
+    actualBalls: ltState.actualBalls + hitActual,
+    nominalBalls: ltState.nominalBalls + hitNominal,
+  };
+  return {
+    ltState: newState,
+    outcome: 'hit_mode_b',
+    hitActual,
+    hitNominal,
+    addOnCount: addOns.addOnCount,
+    nextModeColor,
+  };
+}
+
+function rollInitialLtEntry() {
+  const mode = rollInitialMode();
+  const color = rollCutinColor(mode);
+  return { mode, color };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     SPIN_RATE_OPTIONS,
@@ -103,5 +172,8 @@ if (typeof module !== 'undefined' && module.exports) {
     COLOR_ORDER,
     COLOR_TABLE,
     rollCutinColor,
+    createLtState,
+    applyLtSpin,
+    rollInitialLtEntry,
   };
 }

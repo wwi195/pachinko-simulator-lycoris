@@ -116,3 +116,80 @@ test('rollCutinColor for mode B picks across all 4 colors by cumulative threshol
   assert.equal(withMockRandom([0.6],  () => logic.rollCutinColor('B')), 'green');
   assert.equal(withMockRandom([0.9],  () => logic.rollCutinColor('B')), 'blue');
 });
+
+test('createLtState starts with 132 ST, the given mode, and zeroed counters', () => {
+  assert.deepEqual(logic.createLtState('A'), {
+    mode: 'A',
+    stRemaining: 132,
+    totalHits: 0,
+    actualBalls: 0,
+    nominalBalls: 0,
+  });
+  assert.equal(logic.createLtState('B').mode, 'B');
+});
+
+test('applyLtSpin: a miss with ST remaining decrements stRemaining and reports miss', () => {
+  const state = logic.createLtState('A');
+  const { ltState, outcome } = withMockRandom([0.5], () => logic.applyLtSpin(state));
+  assert.equal(outcome, 'miss');
+  assert.equal(ltState.stRemaining, 131);
+});
+
+test('applyLtSpin: a miss on the last ST spin reports lt_end', () => {
+  const state = { ...logic.createLtState('A'), stRemaining: 1 };
+  const { ltState, outcome } = withMockRandom([0.5], () => logic.applyLtSpin(state));
+  assert.equal(outcome, 'lt_end');
+  assert.equal(ltState.stRemaining, 0);
+});
+
+test('applyLtSpin: a mode-A hit awards 700/750, resets ST to 132, and rolls next mode + color', () => {
+  const state = logic.createLtState('A');
+  // draws: [0]=spinLt hit, [0]=rollNextMode('A')->'A', [0]=rollCutinColor('A')->'red'
+  const { ltState, outcome, hitActual, hitNominal, addOnCount, nextModeColor } =
+    withMockRandom([0, 0, 0], () => logic.applyLtSpin(state));
+  assert.equal(outcome, 'hit_mode_a');
+  assert.equal(hitActual, 700);
+  assert.equal(hitNominal, 750);
+  assert.equal(addOnCount, 0);
+  assert.equal(nextModeColor, 'red');
+  assert.equal(ltState.stRemaining, 132);
+  assert.equal(ltState.mode, 'A');
+  assert.equal(ltState.totalHits, 1);
+  assert.equal(ltState.actualBalls, 700);
+  assert.equal(ltState.nominalBalls, 750);
+});
+
+test('applyLtSpin: a mode-B hit with no add-ons awards 2800/3000 and rolls next mode + color', () => {
+  const state = logic.createLtState('B');
+  // draws: [0]=spinLt hit, [0.6]=rollAddOnSuccess->false (0 add-ons), [0]=rollNextMode('B')->'A', [0]=rollCutinColor('A')->'red'
+  const { ltState, outcome, hitActual, hitNominal, addOnCount, nextModeColor } =
+    withMockRandom([0, 0.6, 0, 0], () => logic.applyLtSpin(state));
+  assert.equal(outcome, 'hit_mode_b');
+  assert.equal(hitActual, 2800);
+  assert.equal(hitNominal, 3000);
+  assert.equal(addOnCount, 0);
+  assert.equal(nextModeColor, 'red');
+  assert.equal(ltState.mode, 'A');
+  assert.equal(ltState.stRemaining, 132);
+  assert.equal(ltState.actualBalls, 2800);
+  assert.equal(ltState.nominalBalls, 3000);
+});
+
+test('applyLtSpin: a mode-B hit with 2 chained add-ons awards the full stacked total', () => {
+  const state = logic.createLtState('B');
+  // draws: [0]=spinLt hit, add-ons=[0,0,0.6] (2 add-ons), [0.95]=rollNextMode('B')->'B', [0]=rollCutinColor('B')->'rainbow'
+  const { ltState, outcome, hitActual, hitNominal, addOnCount, nextModeColor } =
+    withMockRandom([0, 0, 0, 0.6, 0.95, 0], () => logic.applyLtSpin(state));
+  assert.equal(outcome, 'hit_mode_b');
+  assert.equal(hitActual, 2800 + 5600);
+  assert.equal(hitNominal, 3000 + 6000);
+  assert.equal(addOnCount, 2);
+  assert.equal(nextModeColor, 'rainbow');
+  assert.equal(ltState.mode, 'B');
+});
+
+test('rollInitialLtEntry returns a mode and a color consistent with that mode', () => {
+  // [0]=rollInitialMode->'A', [0]=rollCutinColor('A')->'red'
+  const entry = withMockRandom([0, 0], () => logic.rollInitialLtEntry());
+  assert.deepEqual(entry, { mode: 'A', color: 'red' });
+});
