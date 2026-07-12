@@ -420,6 +420,7 @@ function buildScreen(state) {
       const skipDisabled = game.lt.stRemaining <= 10;
       return `<div class="screen">
         <p class="chain-label">${game.lt.totalHits}連チャン中</p>
+        <p class="rush-sub">獲得出玉 <span>${game.lt.actualBalls.toLocaleString()}</span> 球</p>
         <p class="rush-sub">ST残り <span>${game.lt.stRemaining}</span> 回</p>
         <div class="rush-spin-btns">
           <button class="btn-rush-spin" onclick="handleLtSpin()">1回転</button>
