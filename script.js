@@ -510,7 +510,7 @@ function buildScreen(state) {
             <span class="rr-val">×${game.ltUltimateDriveEntryCount}回</span>
           </div>
           <div class="result-row">
-            <span class="rr-label">ULTIMATE DRIVE表示出玉</span>
+            <span class="rr-label">ULTIMATE DRIVE合計出玉</span>
             <span class="rr-val">${game.ltUltimateDriveNominalBalls.toLocaleString()}個</span>
           </div>
         </div>
