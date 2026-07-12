@@ -129,7 +129,7 @@ function backToNormal() {
 function runLtSpin(opts = {}) {
   game.ltAllStats.ltTotalSpins++;
   game.ltCycleSpins++;
-  const { ltState, outcome, hitActual, hitNominal, addOnCount, nextModeColor } = applyLtSpin(game.lt);
+  const { ltState, outcome, hitActual, hitNominal, nextModeColor } = applyLtSpin(game.lt);
   game.lt = ltState;
 
   if (outcome === 'miss') {
@@ -149,11 +149,44 @@ function runLtSpin(opts = {}) {
 
   game.totalLtHits++;
   addBalls(hitActual);
-  game.pending = { hitActual, hitNominal, addOnCount, cutinColor: nextModeColor, spinsThisCycle: game.ltCycleSpins };
+  const spinsThisCycle = game.ltCycleSpins;
   game.ltCycleSpins = 0;
-  addLog(`${game.pending.spinsThisCycle}回転で当選！ ＋${hitActual}球 (上乗せ${addOnCount}連)`, 'rush');
-  setState('lt_hit_result');
+
+  if (outcome === 'hit_mode_a') {
+    game.pending = { hitActual, hitNominal, cutinColor: nextModeColor, spinsThisCycle };
+    addLog(`${spinsThisCycle}回転で当選！ ＋${hitActual}球`, 'rush');
+    setState('lt_hit_result');
+    return true;
+  }
+
+  // outcome === 'hit_mode_b_base' — show the base win first; the add-on
+  // chain (if any) is rolled one step at a time from handleLtAddonRoll(),
+  // each success getting its own "上乗せ3000発！" screen.
+  game.pending = { hitActual, hitNominal, spinsThisCycle, addOnCount: 0 };
+  addLog(`${spinsThisCycle}回転で当選！ 3000ボーナス獲得 ＋${hitActual}球`, 'rush');
+  setState('lt_hit_base_b');
   return true;
+}
+
+// モードBの上乗せ抽選を1回分だけ進める。「3000ボーナス獲得！」画面と
+// 「上乗せ3000発！」画面、どちらの ▶次へ ボタンからも呼ばれる。
+function handleLtAddonRoll() {
+  const { ltState, outcome, hitActual, hitNominal, nextModeColor } = applyAddOnStep(game.lt);
+  game.lt = ltState;
+
+  if (outcome === 'addon_hit') {
+    addBalls(hitActual);
+    game.pending.addOnCount++;
+    game.pending.hitActual = hitActual;
+    game.pending.hitNominal = hitNominal;
+    addLog(`上乗せ${game.pending.addOnCount}連目！ ＋${hitActual}球`, 'rush');
+    setState('lt_addon_hit');
+    return;
+  }
+
+  // outcome === 'addon_end'
+  game.pending.cutinColor = nextModeColor;
+  setState('lt_cutin');
 }
 
 function handleLtSpin() {
@@ -372,15 +405,40 @@ function buildScreen(state) {
     }
 
     case 'lt_hit_result': {
-      const { hitActual, hitNominal, addOnCount, spinsThisCycle } = game.pending;
+      const { hitActual, hitNominal, spinsThisCycle } = game.pending;
       return `<div class="screen">
         <p class="result-sub">${spinsThisCycle}回転で当選</p>
         <p class="chain-label">${game.lt.totalHits}連チャン中</p>
         <div class="vibun-box rush-box">
           <p class="bonus-main premium">${hitNominal}個</p>
-          <p class="bonus-sub">＋${hitActual}球獲得${addOnCount > 0 ? `（上乗せ${addOnCount}連含む）` : ''}</p>
+          <p class="bonus-sub">＋${hitActual}球獲得</p>
         </div>
         <button class="btn-action" onclick="handleLtHitContinue()" style="margin-top:16px;">▶ 次へ</button>
+      </div>`;
+    }
+
+    case 'lt_hit_base_b': {
+      const { hitActual, spinsThisCycle } = game.pending;
+      return `<div class="screen">
+        <p class="result-sub">${spinsThisCycle}回転で当選</p>
+        <p class="chain-label">${game.lt.totalHits}連チャン中</p>
+        <div class="vibun-box rush-box">
+          <p class="bonus-main premium">3000ボーナス獲得！</p>
+          <p class="bonus-sub">＋${hitActual}球獲得</p>
+        </div>
+        <button class="btn-action" onclick="handleLtAddonRoll()" style="margin-top:16px;">▶ 次へ</button>
+      </div>`;
+    }
+
+    case 'lt_addon_hit': {
+      const { hitActual, addOnCount } = game.pending;
+      return `<div class="screen">
+        <p class="chain-label">上乗せ${addOnCount}連目</p>
+        <div class="vibun-box rush-box">
+          <p class="bonus-main premium">上乗せ3000発！</p>
+          <p class="bonus-sub">＋${hitActual}球獲得</p>
+        </div>
+        <button class="btn-action" onclick="handleLtAddonRoll()" style="margin-top:16px;">▶ 次へ</button>
       </div>`;
     }
 

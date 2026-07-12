@@ -54,18 +54,6 @@ function rollAddOnSuccess() {
   return Math.random() < 0.5;
 }
 
-function resolveModeBAddOns() {
-  let addOnCount = 0;
-  let extraActual = 0;
-  let extraNominal = 0;
-  while (rollAddOnSuccess()) {
-    addOnCount++;
-    extraActual += 2800;
-    extraNominal += 3000;
-  }
-  return { addOnCount, extraActual, extraNominal };
-}
-
 const COLOR_ORDER = ['rainbow', 'red', 'green', 'blue'];
 const COLOR_TABLE = {
   A: { rainbow: 0,    red: 0.03, green: 0.194, blue: 0.776 },
@@ -119,31 +107,42 @@ function applyLtSpin(ltState) {
       outcome: 'hit_mode_a',
       hitActual: 700,
       hitNominal: 750,
-      addOnCount: 0,
       nextModeColor,
     };
   }
 
-  const addOns = resolveModeBAddOns();
-  const hitActual = 2800 + addOns.extraActual;
-  const hitNominal = 3000 + addOns.extraNominal;
-  const nextMode = rollNextMode('B');
-  const nextModeColor = rollCutinColor(nextMode);
+  // mode B: resolve only the base win here. The add-on chain is driven
+  // step-by-step by the caller via applyAddOnStep, so each add-on can be
+  // shown as its own "上乗せ3000発！" screen instead of being pre-resolved.
   const newState = {
-    mode: nextMode,
+    mode: ltState.mode,
     stRemaining: LT_ST_COUNT,
     totalHits: ltState.totalHits + 1,
-    actualBalls: ltState.actualBalls + hitActual,
-    nominalBalls: ltState.nominalBalls + hitNominal,
+    actualBalls: ltState.actualBalls + 2800,
+    nominalBalls: ltState.nominalBalls + 3000,
   };
   return {
     ltState: newState,
-    outcome: 'hit_mode_b',
-    hitActual,
-    hitNominal,
-    addOnCount: addOns.addOnCount,
-    nextModeColor,
+    outcome: 'hit_mode_b_base',
+    hitActual: 2800,
+    hitNominal: 3000,
   };
+}
+
+// One step of the mode-B add-on chain. Call repeatedly after a
+// 'hit_mode_b_base' (or a prior 'addon_hit') until it returns 'addon_end'.
+function applyAddOnStep(ltState) {
+  if (rollAddOnSuccess()) {
+    const newState = {
+      ...ltState,
+      actualBalls: ltState.actualBalls + 2800,
+      nominalBalls: ltState.nominalBalls + 3000,
+    };
+    return { ltState: newState, outcome: 'addon_hit', hitActual: 2800, hitNominal: 3000 };
+  }
+  const nextMode = rollNextMode('B');
+  const nextModeColor = rollCutinColor(nextMode);
+  return { ltState: { ...ltState, mode: nextMode }, outcome: 'addon_end', nextModeColor };
 }
 
 function rollInitialLtEntry() {
@@ -168,12 +167,12 @@ if (typeof module !== 'undefined' && module.exports) {
     rollInitialMode,
     rollNextMode,
     rollAddOnSuccess,
-    resolveModeBAddOns,
     COLOR_ORDER,
     COLOR_TABLE,
     rollCutinColor,
     createLtState,
     applyLtSpin,
+    applyAddOnStep,
     rollInitialLtEntry,
   };
 }
