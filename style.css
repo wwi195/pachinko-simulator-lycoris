@@ -462,3 +462,31 @@ body {
 }
 .log-item.win   { color: #b5872a; }
 .log-item.rush  { color: #e63950; }
+
+/* ---- 大当たり履歴グラフ ---- */
+#hist-area { background: #fafafa; border-top: 1px solid #eee; padding: 6px 10px 8px; flex-shrink: 0; }
+.hist-title { font-size: 10px; color: #aaa; letter-spacing: 1px; margin-bottom: 6px; display: flex; justify-content: space-between; }
+.hist-body { display: flex; }
+.hist-axis { display: flex; flex-direction: column-reverse; width: 26px; flex-shrink: 0; padding-bottom: 30px; }
+.hist-axis span { height: 16px; font-size: 8px; color: #aaa; text-align: right; padding-right: 3px; line-height: 16px; transform: translateY(8px); }
+.hist-scroll { flex: 1; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+.hist-scroll::-webkit-scrollbar { height: 4px; }
+.hist-scroll::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+.hist-cols { display: flex; gap: 4px; min-height: 160px; padding-bottom: 2px; }
+.hist-col { width: 32px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.hist-g { font-size: 8px; color: #999; margin-bottom: 2px; white-space: nowrap; }
+.hist-more { font-size: 10px; line-height: 10px; margin-bottom: 1px; color: #999; }
+.hist-block { width: 22px; height: 14px; margin-top: 2px; border-radius: 2px; background: #bbb; }
+.hist-col.zugar .hist-block     { background: linear-gradient(180deg, #9db7e8, #4f74c4); }
+.hist-col.charge .hist-block    { background: linear-gradient(180deg, #c7a6ff, #7c4dcc); }
+.hist-col.rush .hist-block      { background: linear-gradient(180deg, #ff7b7b, #d32f2f); }
+.hist-col.big-chain .hist-block { background: linear-gradient(180deg, #ffe27a, #e0a800); box-shadow: 0 0 3px rgba(224,168,0,0.6); }
+.hist-col.pending .hist-block   { background: #ddd; }
+.hist-col.now .hist-block       { background: transparent; border: 1px dashed #aaa; }
+.hist-type { margin-top: 4px; font-size: 9px; font-weight: bold; height: 12px; white-space: nowrap; color: #999; }
+.hist-col.zugar .hist-type     { color: #4f74c4; }
+.hist-col.charge .hist-type    { color: #7c4dcc; }
+.hist-col.rush .hist-type      { color: #d32f2f; }
+.hist-col.big-chain .hist-type { color: #c48f00; }
+.hist-idx { font-size: 8px; color: #aaa; height: 12px; }
+.hist-empty { font-size: 10px; color: #aaa; padding: 20px 4px; }

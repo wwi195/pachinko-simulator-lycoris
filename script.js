@@ -21,6 +21,7 @@ const game = {
   ltUltimateDriveNominalBalls: 0,
   pending: {},
   eigyoAlertShown: false,
+  hitHistory: [], // 大当たり履歴 [{games, chain}]（新しい順。chain=null はLT結果待ち、0はLTなし）
   log: [],
 };
 
@@ -81,6 +82,7 @@ function runNormalSpin() {
     game.currentSpins = 0;
     game.lastHitSpins = game.totalSpins;
     game.pending = { typeKey, entersLt: info.entersLt, interval };
+    game.hitHistory.unshift({ games: interval, chain: info.entersLt ? null : 0 });
     addLog(`${interval}回転で大当たり！ ${typeKey} ＋${info.actual}球`, 'win');
     setState('bonus_result');
     return true;
@@ -150,6 +152,8 @@ function runLtSpin(opts = {}) {
   }
 
   if (outcome === 'lt_end') {
+    const last = game.hitHistory[0];
+    if (last && last.chain === null) last.chain = game.lt.totalHits + 1; // 初当たり含む連チャン数
     addLog('ST終了 → LTリザルトへ');
     setState('lt_result');
     return true;
@@ -265,6 +269,7 @@ function resetGame() {
   game.toushi          = 0;
   game.totalSpins      = 0;
   game.currentSpins    = 0;
+  game.hitHistory      = [];
   game.lastHitSpins    = 0;
   game.bonusCounts     = { premium: 0, firstLycoris: 0, chinanagoPromotion: 0, lycoris: 0, chinanago: 0 };
   game.ltEntryCount    = 0;
@@ -294,6 +299,7 @@ function render() {
   renderModeBadge();
   renderMainScreen();
   renderRushStats();
+  renderHitGraph();
 }
 
 function renderHeader() {
@@ -419,7 +425,7 @@ function buildScreen(state) {
     case 'lt_idle': {
       const skipDisabled = game.lt.stRemaining <= 10;
       return `<div class="screen">
-        <p class="chain-label">${game.lt.totalHits}連チャン中</p>
+        <p class="chain-label">${game.lt.totalHits + 1}連チャン中</p>
         <p class="rush-sub">獲得出玉 <span>${game.lt.actualBalls.toLocaleString()}</span> 球</p>
         <p class="rush-sub">ST残り <span>${game.lt.stRemaining}</span> 回</p>
         <div class="rush-spin-btns">
@@ -436,7 +442,7 @@ function buildScreen(state) {
       const { hitActual, hitNominal, spinsThisCycle } = game.pending;
       return `<div class="screen">
         <p class="result-sub">${spinsThisCycle}回転で当選</p>
-        <p class="chain-label">${game.lt.totalHits}連チャン中</p>
+        <p class="chain-label">${game.lt.totalHits + 1}連チャン中</p>
         <div class="vibun-box rush-box">
           <p class="bonus-main premium">${hitNominal}個</p>
           <p class="bonus-sub">＋${hitActual}球獲得</p>
@@ -449,7 +455,7 @@ function buildScreen(state) {
       const { hitActual, spinsThisCycle } = game.pending;
       return `<div class="screen">
         <p class="result-sub">${spinsThisCycle}回転で当選</p>
-        <p class="chain-label">${game.lt.totalHits}連チャン中</p>
+        <p class="chain-label">${game.lt.totalHits + 1}連チャン中</p>
         <div class="vibun-box rush-box">
           <p class="bonus-main premium">ボーナス3000</p>
           <p class="bonus-sub">＋${hitActual}球獲得</p>
@@ -484,8 +490,8 @@ function buildScreen(state) {
         <p class="rush-result-title">LT リザルト</p>
         <div class="rush-result-box">
           <div class="result-row highlight">
-            <span class="rr-label">連チャン数</span>
-            <span class="rr-val gold">${s.totalHits}回</span>
+            <span class="rr-label">連チャン数（初当たり含む）</span>
+            <span class="rr-val gold">${s.totalHits + 1}連</span>
           </div>
           <div class="result-row">
             <span class="rr-label">TOTAL</span>
@@ -584,6 +590,34 @@ function renderRushStats() {
   document.getElementById('rs-chain').textContent = hits + '回';
   document.getElementById('rs-prob').textContent  = prob;
   document.getElementById('rs-spins').textContent = spins + '回';
+}
+
+// ---- 大当たり履歴グラフ ----
+const HIST_BLOCK = 100;
+const HIST_MAX_BLOCKS = 7;
+function renderHitGraph() {
+  const el = document.getElementById('hist-cols');
+  if (!el) return;
+  const col = (cls, games, label, idx) => {
+    const blocks = Math.min(HIST_MAX_BLOCKS, Math.max(1, Math.ceil(games / HIST_BLOCK)));
+    const more = games >= HIST_BLOCK * HIST_MAX_BLOCKS ? '<div class="hist-more">▲</div>' : '';
+    return `<div class="hist-col ${cls}">
+      <div class="hist-g">${games}</div>${more}
+      ${'<div class="hist-block"></div>'.repeat(blocks)}
+      <div class="hist-type">${label}</div>
+      <div class="hist-idx">${idx}</div>
+    </div>`;
+  };
+  let html = col('now', game.currentSpins, '現在', '');
+  game.hitHistory.forEach((h, i) => {
+    let cls, label;
+    if (h.chain === null) { cls = 'pending'; label = '…'; }
+    else if (h.chain >= 1) { cls = h.chain >= 10 ? 'big-chain' : 'rush'; label = `${h.chain}連`; }
+    else { cls = 'zugar'; label = '単発'; }
+    html += col(cls, h.games, label, i + 1);
+  });
+  if (game.hitHistory.length === 0) html += '<div class="hist-empty">まだ大当たりがありません</div>';
+  el.innerHTML = html;
 }
 
 function renderLog() {
