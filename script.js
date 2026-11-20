@@ -146,7 +146,8 @@ function runLtSpin(opts = {}) {
   if (outcome === 'miss') {
     if (!opts.silent) {
       addLog(`ST残り${ltState.stRemaining}回`);
-      setState('lt_miss');
+      // ST中の外れは「外れ」画面を出さず、そのまま続けて押せるようにする
+      handleLtMissContinue();
       return true;
     }
     return false;
